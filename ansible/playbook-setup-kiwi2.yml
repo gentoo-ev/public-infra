@@ -1,0 +1,91 @@
+- hosts: kiwi2.gentoo-ev.org
+
+  tasks:
+
+  - name: Add yum repository "epel" (for python-pip)
+    yum_repository:
+      name: epel
+      description: EPEL YUM repo
+      baseurl: https://download.fedoraproject.org/pub/epel/$releasever/$basearch/
+      enabled: yes
+      gpgcheck: yes
+      gpgkey: https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+
+  - name: Add yum repository "docker-ce-stable"
+    yum_repository:
+      name: docker-ce-stable
+      description: Docker CE Stable - $basearch
+      baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+      enabled: yes
+      gpgcheck: yes
+      gpgkey: https://download.docker.com/linux/centos/gpg
+
+  - name: Install distro packages
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+    # Debugging tools
+      - htop
+      - wget
+    # Build and runtime dependencies
+      - docker-ce
+      - git
+      - python-pip
+
+  - name: Install docker-compose
+    pip:
+      name: docker-compose
+
+  - name: Add Docker users
+    user:
+      name: "{{ item }}"
+      groups: docker
+      append: yes
+    with_items:
+      - gentoo-de
+      - gentoo-ev-org
+      - images-gentoo-ev-org
+      - ssl-reverse-proxy
+
+  - name: Clone/sync Git repositories
+    git:
+      repo: "{{ item.repo }}"
+      remote: github-readonly
+      dest: "/home/{{ item.user }}/git-clone"
+      update: yes
+    become_user: "{{ item.user }}"
+    with_items:
+      - {user: 'gentoo-de', repo: 'https://github.com/gentoo-ev/www.gentoo.de.git'}
+      - {user: 'gentoo-ev-org', repo: 'https://github.com/gentoo-ev/www.gentoo-ev.org.git'}
+      - {user: 'images-gentoo-ev-org', repo: 'https://github.com/gentoo-ev/images.gentoo-ev.org.git'}
+      - {user: 'ssl-reverse-proxy', repo: 'https://github.com/hartwork/docker-ssl-reverse-proxy.git'}
+
+  - name: Generate reverse proxy Caddyfile
+    command: ./Caddyfile.generate --config sites.cfg.EXAMPLE.gentoo-ev
+    args:
+      chdir: /home/ssl-reverse-proxy/git-clone/
+      creates: /home/ssl-reverse-proxy/git-clone/Caddyfile
+    become_user: ssl-reverse-proxy
+
+  - name: Start Docker service + enable auto-start
+    service:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: Create internal Docker network "ssl-reverse-proxy"
+    shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
+    register: docker_network
+    changed_when: "docker_network.stdout == '[]\n'"
+
+  - name: Launch Docker containers (may take a while!)
+    docker_service:
+      project_src: "/home/{{ item }}/git-clone"
+      state: present
+    become_user: "{{ item }}"
+    with_items:
+      - gentoo-de
+      - gentoo-ev-org
+      - images-gentoo-ev-org
+      - ssl-reverse-proxy
