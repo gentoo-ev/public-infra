@@ -27,6 +27,7 @@
     with_items:
     # Debugging tools
       - htop
+      - tmux
       - wget
     # Build and runtime dependencies
       - docker-ce
