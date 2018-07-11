@@ -62,11 +62,18 @@
       - {user: 'images-gentoo-ev-org', repo: 'https://github.com/gentoo-ev/images.gentoo-ev.org.git'}
       - {user: 'ssl-reverse-proxy', repo: 'https://github.com/hartwork/docker-ssl-reverse-proxy.git'}
 
+  - name: Apply reverse proxy sites.cfg
+    copy:
+      src: files/kiwi2/ssl-reverse-proxy-sites.cfg
+      dest: /home/ssl-reverse-proxy/git-clone/sites.cfg
+      owner: ssl-reverse-proxy
+      group: ssl-reverse-proxy
+
   - name: Generate reverse proxy Caddyfile
-    command: ./Caddyfile.generate --config sites.cfg.EXAMPLE.gentoo-ev
+    command: ./Caddyfile.generate
     args:
       chdir: /home/ssl-reverse-proxy/git-clone/
-      creates: /home/ssl-reverse-proxy/git-clone/Caddyfile
+      # DISABLED: creates: /home/ssl-reverse-proxy/git-clone/Caddyfile
     become_user: ssl-reverse-proxy
 
   - name: Start Docker service + enable auto-start
