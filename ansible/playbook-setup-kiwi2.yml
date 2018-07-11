@@ -44,6 +44,7 @@
       groups: docker
       append: yes
     with_items:
+      - distrowatch-gentoo-ev-org
       - gentoo-de
       - gentoo-ev-org
       - images-gentoo-ev-org
@@ -57,6 +58,7 @@
       update: yes
     become_user: "{{ item.user }}"
     with_items:
+      - {user: 'distrowatch-gentoo-ev-org', repo: 'https://github.com/gentoo-ev/distrowatch.gentoo-ev.org.git'}
       - {user: 'gentoo-de', repo: 'https://github.com/gentoo-ev/www.gentoo.de.git'}
       - {user: 'gentoo-ev-org', repo: 'https://github.com/gentoo-ev/www.gentoo-ev.org.git'}
       - {user: 'images-gentoo-ev-org', repo: 'https://github.com/gentoo-ev/images.gentoo-ev.org.git'}
@@ -93,6 +95,7 @@
       state: present
     become_user: "{{ item }}"
     with_items:
+      - distrowatch-gentoo-ev-org
       - gentoo-de
       - gentoo-ev-org
       - images-gentoo-ev-org
