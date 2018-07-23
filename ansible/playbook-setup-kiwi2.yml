@@ -72,13 +72,14 @@
       dest: /home/ssl-reverse-proxy/git-clone/sites.cfg
       owner: ssl-reverse-proxy
       group: ssl-reverse-proxy
+    register: sites_cfg
 
-  - name: Generate reverse proxy Caddyfile
+  - name: Generate/sync reverse proxy Caddyfile
     command: ./Caddyfile.generate
     args:
       chdir: /home/ssl-reverse-proxy/git-clone/
-      # DISABLED: creates: /home/ssl-reverse-proxy/git-clone/Caddyfile
     become_user: ssl-reverse-proxy
+    when: sites_cfg.changed
 
   - name: Start services + enable auto-start
     service:
