@@ -78,11 +78,13 @@
       # DISABLED: creates: /home/ssl-reverse-proxy/git-clone/Caddyfile
     become_user: ssl-reverse-proxy
 
-  - name: Start Docker service + enable auto-start
+  - name: Start services + enable auto-start
     service:
-      name: docker
+      name: "{{ item }}"
       state: started
       enabled: yes
+    with_items:
+      - docker
 
   - name: Create internal Docker network "ssl-reverse-proxy"
     shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
