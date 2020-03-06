@@ -67,6 +67,21 @@
       - {user: 'images-gentoo-ev-org', repo: 'https://github.com/gentoo-ev/images.gentoo-ev.org.git'}
       - {user: 'ssl-reverse-proxy', repo: 'https://github.com/hartwork/docker-ssl-reverse-proxy.git'}
 
+  - name: Create certificate store for reverse proxy
+    file:
+      state: directory
+      path: /home/ssl-reverse-proxy/git-clone/caddy-home
+      owner: '65534'
+      group: '65534'
+      mode: '0700'
+
+  - name: Activate certificate store for reverse proxy
+    copy:
+      src: files/kiwi2/ssl-reverse-proxy-docker-compose-override.yml
+      dest: /home/ssl-reverse-proxy/git-clone/docker-compose.override.yml
+      owner: ssl-reverse-proxy
+      group: ssl-reverse-proxy
+
   - name: Apply reverse proxy sites.cfg
     copy:
       src: files/kiwi2/ssl-reverse-proxy-sites.cfg

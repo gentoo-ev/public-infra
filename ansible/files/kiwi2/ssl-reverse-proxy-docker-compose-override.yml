@@ -1,0 +1,7 @@
+version: "3"
+
+services:
+  ssl-reverse-proxy:
+    volumes:
+      # See comments in docker-compose.yml
+      - ./caddy-home:/home/caddy/
