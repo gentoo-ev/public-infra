@@ -127,7 +127,7 @@
     changed_when: "docker_network.stdout == '[]\n'"
 
   - name: Launch Docker containers (may take a while!)
-    docker_service:
+    docker_compose:
       project_src: "/home/{{ item }}/git-clone"
       state: present
     become_user: "{{ item }}"
