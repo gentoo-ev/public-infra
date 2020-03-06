@@ -27,6 +27,7 @@
     with_items:
     # Debugging tools
       - htop
+      - lsof
       - tmux
       - wget
     # Build and runtime dependencies
