@@ -130,6 +130,7 @@
     docker_compose:
       project_src: "/home/{{ item }}/git-clone"
       state: present
+      build: yes
     become_user: "{{ item }}"
     with_items:
       - distrowatch-gentoo-ev-org
