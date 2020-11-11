@@ -33,6 +33,7 @@
       - docker-ce
       - git
       - python-pip
+      - python3
     # VM maintenance
       - yum-cron
 
