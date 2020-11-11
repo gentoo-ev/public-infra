@@ -1,4 +1,5 @@
 - hosts: kiwi2.gentoo-ev.org
+  gather_facts: no
 
   tasks:
 
