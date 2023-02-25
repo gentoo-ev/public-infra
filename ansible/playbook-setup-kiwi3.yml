@@ -1,4 +1,4 @@
-- hosts: kiwi2.gentoo-ev.org
+- hosts: kiwi3.gentoo-ev.org
   gather_facts: no
 
   tasks:
@@ -79,14 +79,14 @@
 
   - name: Activate certificate store for reverse proxy
     copy:
-      src: files/kiwi2/ssl-reverse-proxy-docker-compose-override.yml
+      src: files/kiwi3/ssl-reverse-proxy-docker-compose-override.yml
       dest: /home/ssl-reverse-proxy/git-clone/docker-compose.override.yml
       owner: ssl-reverse-proxy
       group: ssl-reverse-proxy
 
   - name: Apply reverse proxy sites.cfg
     copy:
-      src: files/kiwi2/ssl-reverse-proxy-sites.cfg
+      src: files/kiwi3/ssl-reverse-proxy-sites.cfg
       dest: /home/ssl-reverse-proxy/git-clone/sites.cfg
       owner: ssl-reverse-proxy
       group: ssl-reverse-proxy
