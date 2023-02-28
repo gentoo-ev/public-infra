@@ -28,6 +28,7 @@
     # Debugging tools
       - htop
       - lsof
+      - nano
       - tmux
       - wget
     # Build and runtime dependencies
