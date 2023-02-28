@@ -35,8 +35,6 @@
       - git
       - python-pip
       - python3
-    # VM maintenance
-      - yum-cron
 
   - name: Install docker-compose
     pip:
@@ -106,22 +104,6 @@
       enabled: yes
     with_items:
       - docker
-      - yum-cron
-
-  - name: Configure yum-cron to auto-apply updates
-    ini_file:
-      path: /etc/yum/yum-cron.conf
-      section: commands
-      option: apply_updates
-      value: 'yes'
-      mode: 0600
-    register: yum_cron_conf
-
-  - name: Restart service yum-cron
-    service:
-      name: yum-cron
-      state: restarted
-    when: yum_cron_conf.changed
 
   - name: Create internal Docker network "ssl-reverse-proxy"
     shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
