@@ -51,6 +51,14 @@
     pip:
       name: docker-compose
 
+  - name: "Add /usr/local/bin to ${PATH} (for docker-compose)"
+    copy:
+      dest: /etc/profile.d/usr-local-bin.sh
+      owner: root
+      group: root
+      mode: 0644
+      content: "pathmunge /usr/local/bin  # for-docker-compose"
+
   - name: Add Docker users
     user:
       name: "{{ item }}"
