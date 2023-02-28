@@ -3,6 +3,16 @@
 
   tasks:
 
+  - name: "Stop and mask service rpcbind (to no longer expose TCP port 0.0.0.0:111)"
+    systemd:
+      name: "{{ item }}"
+      enabled: no
+      masked: yes
+      state: stopped
+    with_items:
+    - rpcbind.service
+    - rpcbind.socket
+
   - name: Add yum repository "epel" (for htop)
     yum_repository:
       name: epel
