@@ -3,14 +3,14 @@
 
   tasks:
 
-  - name: Add yum repository "epel" (for python-pip)
+  - name: Add yum repository "epel" (for htop)
     yum_repository:
       name: epel
-      description: EPEL YUM repo
-      baseurl: https://download.fedoraproject.org/pub/epel/$releasever/$basearch/
+      description: Extra Packages for Enterprise Linux $releasever - $basearch
+      metalink: https://mirrors.fedoraproject.org/metalink?repo=epel-$releasever&arch=$basearch&infra=$infra&content=$contentdir
       enabled: yes
       gpgcheck: yes
-      gpgkey: https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+      gpgkey: https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-$releasever
 
   - name: Add yum repository "docker-ce-stable"
     yum_repository:
