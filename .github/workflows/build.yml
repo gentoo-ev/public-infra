@@ -1,0 +1,160 @@
+# Copyright (C) 2023 Sebastian Pipping <sebastian@pipping.org>
+# SPDX-License-Identifier: MIT
+
+name: Build
+
+# Drop permissions to minimum for security
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: '0 2 * * 5'  # Every Friday at 2am
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    env:
+      source_image: CentOS-Stream-GenericCloud-9-20230216.0.x86_64.qcow2
+      hdd_image: centos_hdd.qcow2
+      config_image: config_drive.iso
+      private_key: id_rsa__centos
+      public_key: id_rsa__centos.pub
+      username: centos
+      hostname: fake-kiwi3-quince
+    steps:
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3  # v3.5.0
+
+      - name: Install dependencies (base)
+        run: |-
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends -V \
+              ansible \
+              genisoimage \
+              python3-pip \
+              python3-venv \
+              qemu-system-x86-64 \
+              qemu-utils \
+              wait-for-it
+
+      - name: Install dependencies (genconfdrv)
+        run: |-
+          set -v
+          git clone https://git.someserver.de/seba/genconfdrv.git
+          cd genconfdrv
+          git checkout d0a3658a93b47baf64790ba8985c5c6b73187db3  # just to avoid movement
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install .
+
+      - name: Restore OpenStack source image from cache (if available)
+        id: cache-source-image
+        uses: actions/cache/restore@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8  # v3.3.1
+        with:
+          path: ${{ env.source_image }}
+          key: ${{ env.source_image }}
+
+      - name: Download OpenStack source image
+        if: steps.cache-source-image.outputs.cache-hit != 'true'
+        run: |-
+          set -x
+          wget "https://cloud.centos.org/centos/9-stream/x86_64/images/${source_image}"
+
+      - name: Save OpenStack VM source to cache (if missing)
+        if: steps.cache-source-image.outputs.cache-hit != 'true'
+        uses: actions/cache/save@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8  # v3.3.1
+        with:
+          path: ${{ env.source_image }}
+          key: ${{ env.source_image }}
+
+      - name: Create HDD file
+        run: |-
+          set -x
+          mv "${source_image}" "${hdd_image}"
+          qemu-img resize "${hdd_image}" 20g
+
+      - name: Create password-less SSH keypair
+        run: |-
+          set -x
+          ssh-keygen -N '' -C "${username}@${hostname}"  -f "${private_key}"
+
+      - name: Create OpenStack config drive
+        run: |-
+          source genconfdrv/venv/bin/activate
+          set -x
+          genconfdrv \
+            -v \
+            --format iso \
+            -o "${config_image}" \
+            -H "${hostname}" \
+            -a "${username}:$(cat "${public_key}")" \
+            --disable-upgrades \
+            --no-debian-cleanup \
+            --no-debian-sources-cleanup
+
+      - name: Interact with VM
+        run: |-
+          set -x -o pipefail
+
+          # Prepare 127.0.0.1:22 for use by KVM
+          sudo systemctl stop sshd.service
+          sudo tee -a /etc/hosts <<<'127.0.0.1  kiwi3.gentoo-ev.org quince.gentoo-ev.org'
+          [[ "$(getent hosts kiwi3.gentoo-ev.org | awk '{print $1}' | tee /dev/stderr)" = 127.0.0.1 ]]
+          [[ "$(getent hosts quince.gentoo-ev.org | awk '{print $1}' | tee /dev/stderr)" = 127.0.0.1 ]]
+
+          # Spin up KVM
+          [[ ! -e /dev/kvm ]]  # if this fails, add "-enable-kvm" to KVM below and then drop this assert
+          sudo qemu-system-x86_64 \
+            -chardev file,id=char0,path=serial.txt -serial chardev:char0 \
+            -cpu max \
+            -m 2g \
+            -drive "file=${hdd_image},format=qcow2,media=disk" \
+            -drive "file=${config_image},format=raw,media=cdrom" \
+            -net nic \
+            -net user,hostfwd=tcp::22-:22 \
+            -nographic \
+            &
+          qemu_pid=$!
+
+          # Follow VM console
+          while [[ ! -f serial.txt ]]; do
+            sleep 0.5
+          done
+          tail -f serial.txt &
+          tail_pid=$!
+
+          # Wait until SSH to the VM is working
+          wait-for-it -t 90 127.0.0.1:22
+          eval "$(ssh-agent)"
+          ssh-add "${private_key}"
+          export ANSIBLE_SSH_COMMON_ARGS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+          SSH() { ssh "${username}@127.0.0.1" ${ANSIBLE_SSH_COMMON_ARGS} "$@"; }
+          set +x
+          for i in {1..100}; do
+            if ! SSH id; then
+              sleep 5
+              continue
+            fi
+            break
+          done
+          set -x
+          SSH id  # now as an assertion
+
+          # Throw Ansible at the VM
+          # NOTE: Without the "| cat", Ansible will refuse operation saying
+          #       it requires blocking I/O on stdout.  See this pull request:
+          #       https://github.com/ansible/ansible/pull/77668/files
+          cd ansible
+          export ANSIBLE_FORCE_COLOR=true
+          export PYTHONUNBUFFERED=1
+          time ansible-playbook playbook-setup-kiwi3.yml playbook-setup-quince.yml | cat
+
+          # Shut down
+          set +e
+          SSH sudo poweroff
+          kill -2 "${tail_pid}"
+          kill -2 "${qemu_pid}"
