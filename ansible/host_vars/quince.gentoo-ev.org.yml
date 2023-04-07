@@ -1,0 +1,4 @@
+ansible_ssh_user: centos
+
+ansible_become: yes
+ansible_become_method: sudo
