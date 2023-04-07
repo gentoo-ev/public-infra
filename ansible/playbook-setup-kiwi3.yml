@@ -222,3 +222,4 @@
       - gentoo-ev-org
       - images-gentoo-ev-org
       - ssl-reverse-proxy
+    when: "item != 'ssl-reverse-proxy' or lookup('ansible.builtin.env', 'GITHUB_ACTIONS') != 'true'"
