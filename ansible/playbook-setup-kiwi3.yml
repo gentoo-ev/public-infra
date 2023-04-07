@@ -13,7 +13,7 @@
     - rpcbind.service
     - rpcbind.socket
 
-  - name: Add yum repository "epel" (for htop)
+  - name: Add yum repository "epel" (for htop and mg)
     yum_repository:
       name: epel
       description: Extra Packages for Enterprise Linux $releasever - $basearch
@@ -38,6 +38,7 @@
     # Debugging tools
       - htop
       - lsof
+      - mg
       - nano
       - tmux
       - wget
