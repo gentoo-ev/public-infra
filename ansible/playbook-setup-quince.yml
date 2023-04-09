@@ -13,6 +13,10 @@
     - rpcbind.service
     - rpcbind.socket
 
+  - name: Set timezone
+    community.general.timezone:
+      name: Europe/Berlin
+
   - name: Add yum repository "epel" (for htop and mg)
     yum_repository:
       name: epel
