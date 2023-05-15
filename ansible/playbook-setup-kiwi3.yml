@@ -39,6 +39,9 @@
     package:
       state: present
       name:
+    # Maintenance
+      - dnf-automatic
+      - python3-tracer
     # Debugging tools
       - htop
       - lsof
@@ -131,12 +134,42 @@
         }
     register: redirect
 
+  - name: "dnf-automatic: Activate 'apply_updates'"
+    community.general.ini_file:
+      path: /etc/dnf/automatic.conf
+      section: commands
+      option: apply_updates
+      value: 'yes'
+
+  - name: "dnf-automatic: Allow custom systemd service config"
+    ansible.builtin.file:
+      path: /etc/systemd/system/dnf-automatic.service.d/
+      state: directory
+      mode: 0755
+
+  - name: "dnf-automatic: Add restart-as-needed.sh"
+    copy:
+      src: files/restart-as-needed.sh
+      dest: /usr/local/bin/restart-as-needed.sh
+      owner: root
+      group: root
+      mode: 0744
+
+  - name: "dnf-automatic: Activate restart-as-needed.sh"
+    copy:
+      src: files/dnf-automatic-service-d-override.conf
+      dest: /etc/systemd/system/dnf-automatic.service.d/override.conf
+      owner: root
+      group: root
+      mode: 0644
+
   - name: Start services + enable auto-start
     service:
       name: "{{ item }}"
       state: started
       enabled: yes
     with_items:
+      - dnf-automatic.timer
       - docker
 
   - name: Create internal Docker network "ssl-reverse-proxy"
