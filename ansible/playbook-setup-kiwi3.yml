@@ -50,6 +50,8 @@
       - nano
       - tmux
       - wget
+    # Security
+      - fail2ban
     # Build and runtime dependencies
       - docker-ce
       - git
@@ -164,6 +166,12 @@
       group: root
       mode: 0644
 
+  - name: Configure fail2ban
+    copy:
+      src: files/fail2ban-sshd.conf
+      dest: /etc/fail2ban/jail.d/sshd.conf
+    register: fail2ban_cfg
+
   - name: Start services + enable auto-start
     service:
       name: "{{ item }}"
@@ -171,7 +179,15 @@
       enabled: yes
     with_items:
       - dnf-automatic.timer
+      # firewalld needed for fail2ban (see below)
+      - firewalld
       - docker
+
+  - name: Start fail2ban service + enable auto-start
+    service:
+      name: fail2ban
+      state: "{{ 'reloaded' if fail2ban_cfg.changed else 'started' }}"
+      enabled: yes
 
   - name: Create internal Docker network "ssl-reverse-proxy"
     shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
