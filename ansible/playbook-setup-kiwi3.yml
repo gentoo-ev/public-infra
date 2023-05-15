@@ -43,6 +43,7 @@
       - dnf-automatic
       - python3-tracer
     # Debugging tools
+      - bash-completion
       - htop
       - lsof
       - mg
