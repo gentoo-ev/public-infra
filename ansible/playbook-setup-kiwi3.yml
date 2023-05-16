@@ -130,11 +130,7 @@
   - name: Add redirect for lists.gentoo-ev.org to reverse proxy Caddyfile
     blockinfile:
       path: /home/ssl-reverse-proxy/git-clone/Caddyfile
-      block: |
-        lists.gentoo-ev.org {
-            import common
-            redir https://gentoo-ev.org/ressourcen/#mailingliste permanent
-        }
+      block: "{{ lookup('file', 'files/kiwi3/ssl-reverse-proxy-redir.txt') }}"
     register: redirect
 
   - name: "dnf-automatic: Activate 'apply_updates'"
