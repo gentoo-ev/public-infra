@@ -9,7 +9,7 @@
       enabled: no
       masked: yes
       state: stopped
-    with_items:
+    loop:
     - rpcbind.service
     - rpcbind.socket
 
@@ -47,7 +47,7 @@
   - name: Add users
     user:
       name: "{{ item }}"
-    with_items:
+    loop:
       - backup
 
   - name: Create backup directory
@@ -98,7 +98,7 @@
       name: "{{ item }}"
       state: started
       enabled: yes
-    with_items:
+    loop:
       - dnf-automatic.timer
       # firewalld needed for fail2ban (see below)
       - firewalld
