@@ -178,8 +178,13 @@
 
   - name: Configure fail2ban
     copy:
-      src: files/fail2ban-sshd.conf
-      dest: /etc/fail2ban/jail.d/sshd.conf
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+      - src: files/fail2ban-local.conf
+        dest: /etc/fail2ban/fail2ban.d/local.conf
+      - src: files/fail2ban-sshd.conf
+        dest: /etc/fail2ban/jail.d/sshd.conf
     register: fail2ban_cfg
 
   - name: Start services + enable auto-start
