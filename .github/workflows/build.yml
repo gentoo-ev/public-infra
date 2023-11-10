@@ -19,7 +19,7 @@ jobs:
     name: Build
     runs-on: ubuntu-22.04
     env:
-      source_image: CentOS-Stream-GenericCloud-9-20230216.0.x86_64.qcow2
+      source_image: CentOS-Stream-GenericCloud-9-20231106.0.x86_64.qcow2
       hdd_image: centos_hdd.qcow2
       config_image: config_drive.iso
       private_key: id_rsa__centos
