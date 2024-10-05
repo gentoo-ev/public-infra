@@ -210,11 +210,40 @@
     changed_when: "docker_network.stdout == '[]\n'"
 
   - name: Launch Docker containers (may take a while!)
-    docker_compose:
-      project_src: "/home/{{ item }}/git-clone"
-      state: present
-      restarted: "{{ item == 'ssl-reverse-proxy' and redirect.changed }}"
-      build: yes
+    shell:
+      chdir: "/home/{{ item }}/git-clone"
+      cmd: |
+        set -e -u -x -o pipefail
+        changed=true
+        docker compose pull
+        # For the upcoming block, the ideas are:
+        # - Check the SHA256s from the build output against all previously existing
+        #   images: if not all of them are matched, we have at least one new image.
+        # - Use the fact that "grep -v" returns 1 when it filtered all lines away.
+        # - Use the fact that "docker compose up" seems to pick up more recent images
+        #   by default (unless --no-recreate is used), see:
+        #   https://docs.docker.com/reference/cli/docker/compose/up/
+        docker compose build \
+            | { grep -F 'writing image' || true ; } \
+            | tee /dev/stderr \
+            | { grep -oE 'sha256:[a-f0-9]{64}' || true ; } \
+            | grep -v -q -F -f <(docker images --quiet --no-trunc | sort | tee /dev/stderr) || changed=false
+        docker_compose_up_args=(
+            # careful with --remove-orphans!
+            --detach
+            --wait
+        )
+        if [[ "{{ item == 'ssl-reverse-proxy' and redirect.changed }}" = True ]]; then
+            docker_compose_up_args+=( --force-recreate )
+            changed=true
+        fi
+        docker compose up "${docker_compose_up_args[@]}"
+        echo
+        echo "changed=${changed}"
+    args:
+      executable: /bin/bash
+    register: docker_compose_build
+    changed_when: "docker_compose_build.stdout.endswith('\nchanged=true')"
     become_user: "{{ item }}"
     loop:
       - distrowatch-gentoo-ev-org
