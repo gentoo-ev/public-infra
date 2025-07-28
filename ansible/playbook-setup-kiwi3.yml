@@ -252,3 +252,8 @@
       - gentoo-ev-org
       - images-gentoo-ev-org
       - ssl-reverse-proxy
+
+  - name: Prune Docker containers and images
+    community.docker.docker_prune:
+      containers: true
+      images: true
