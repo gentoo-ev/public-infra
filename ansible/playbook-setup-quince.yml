@@ -51,6 +51,8 @@
       - wget
     # Security
       - fail2ban
+    # Monitoring
+      - monit
 
   - name: Add users
     user:
@@ -106,6 +108,12 @@
         dest: /etc/fail2ban/jail.d/sshd.conf
     register: fail2ban_cfg
 
+  - name: Configure monit
+    copy:
+      src: files/monitrc
+      dest: /etc/monitrc
+    register: monit_cfg
+
   - name: Start services + enable auto-start
     service:
       name: "{{ item }}"
@@ -120,3 +128,4 @@
       # firewalld needed for fail2ban
       - firewalld
       - fail2ban
+      - monit
