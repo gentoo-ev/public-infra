@@ -21,6 +21,10 @@
     community.general.timezone:
       name: Europe/Berlin
 
+  - name: Set hostname
+    hostname:
+      name: "{{ inventory_hostname }}"
+
   - name: Add yum repository "epel" (for htop and mg)
     yum_repository:
       name: epel
