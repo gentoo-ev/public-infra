@@ -1,5 +1,5 @@
 # Copyright 2018-2023 Sebastian Pipping
-# Copyright 2023 Ulrich Müller
+# Copyright 2023-2025 Ulrich Müller
 # Distributed under the terms of the MIT license
 
 - hosts: kiwi3.gentoo-ev.org
@@ -191,19 +191,18 @@
   - name: Start services + enable auto-start
     service:
       name: "{{ item }}"
-      state: started
+      state: >-
+        {{
+          vars[item+'_cfg'].changed | default(false)
+          | ternary('reloaded', 'started')
+        }}
       enabled: yes
     loop:
       - dnf-automatic.timer
-      # firewalld needed for fail2ban (see below)
+      # firewalld needed for fail2ban
       - firewalld
+      - fail2ban
       - docker
-
-  - name: Start fail2ban service + enable auto-start
-    service:
-      name: fail2ban
-      state: "{{ 'reloaded' if fail2ban_cfg.changed else 'started' }}"
-      enabled: yes
 
   - name: Create internal Docker network "ssl-reverse-proxy"
     shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
