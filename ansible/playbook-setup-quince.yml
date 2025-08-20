@@ -7,6 +7,12 @@
 
   tasks:
 
+  - name: Read and decrypt URL for hc-ping
+    set_fact:
+      hc_ping_url: >-
+        {{ lookup('pipe', 'gpg --batch -qd files/quince/hc_ping_url.asc') }}
+      cacheable: yes
+
   - name: "Stop and mask service rpcbind (to no longer expose TCP port 0.0.0.0:111)"
     systemd:
       name: "{{ item }}"
@@ -109,8 +115,8 @@
     register: fail2ban_cfg
 
   - name: Configure monit
-    copy:
-      src: files/monitrc
+    template:
+      src: files/monitrc.j2
       dest: /etc/monitrc
     register: monit_cfg
 

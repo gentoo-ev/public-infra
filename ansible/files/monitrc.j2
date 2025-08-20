@@ -1,0 +1,17 @@
+set daemon 3600
+set mailserver mail.gentoo-ev.org using tlsv13
+#set alert technik@gentoo-ev.org not on { instance, action }
+
+set httpd port 2812
+  use address localhost
+  allow localhost
+  allow admin:monit
+
+check filesystem rootfs with path /
+  if space usage > 80%
+  then exec "/usr/bin/curl -sS --retry 2 {{ hc_ping_url }}/fail"
+
+check program ok_ping
+  with path "/usr/bin/curl -sS --retry 2 {{ hc_ping_url }}"
+  depends on rootfs
+  if status != 0 then alert
