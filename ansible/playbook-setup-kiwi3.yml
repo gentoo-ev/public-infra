@@ -204,6 +204,9 @@
     template:
       src: files/monitrc.j2
       dest: /etc/monitrc
+      owner: root
+      group: root
+      mode: 0600
     register: monit_cfg
 
   - name: Start services + enable auto-start
