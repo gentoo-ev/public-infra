@@ -10,7 +10,11 @@
   - name: Read and decrypt URL for hc-ping
     set_fact:
       hc_ping_url: >-
-        {{ lookup('pipe', 'gpg --batch -qd files/kiwi3/hc_ping_url.asc') }}
+        {{
+          'https://hc-ping.com/' ~
+          lookup('pipe', 'gpg --batch -qd files/hc-ping-key.asc') | trim ~
+          '/fs-kiwi'
+        }}
       cacheable: yes
 
   - name: "Stop and mask service rpcbind (to no longer expose TCP port 0.0.0.0:111)"
