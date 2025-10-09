@@ -107,6 +107,13 @@
       group: root
       mode: 0644
 
+  - name: Configure sshd
+    blockinfile:
+      path: /etc/ssh/sshd_config
+      block: "{{ lookup('file', 'files/sshd-local.conf') }}"
+      insertbefore: BOF
+      append_newline: true
+
   - name: Configure fail2ban
     copy:
       src: "{{ item.src }}"
