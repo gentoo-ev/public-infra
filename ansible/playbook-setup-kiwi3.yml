@@ -130,7 +130,7 @@
         version: HEAD
       - user: ssl-reverse-proxy
         repo: https://github.com/hartwork/docker-ssl-reverse-proxy.git
-        version: 2a8691286bd3d0bf3fc393a2eb0ebbcd2219c0d2
+        version: aa8b200daba928ca348418130f341d5dbeaa5d38
 
   - name: Create certificate store for reverse proxy
     file:
