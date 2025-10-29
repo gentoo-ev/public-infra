@@ -98,7 +98,6 @@
       append: yes
     loop:
       - distrowatch-gentoo-ev-org
-      - gentoo-de
       - gentoo-ev-org
       - wwwtest-gentoo-ev-org
       - images-gentoo-ev-org
@@ -115,9 +114,6 @@
     loop:
       - user: distrowatch-gentoo-ev-org
         repo: https://github.com/gentoo-ev/distrowatch.gentoo-ev.org.git
-        version: HEAD
-      - user: gentoo-de
-        repo: https://github.com/gentoo-ev/www.gentoo.de.git
         version: HEAD
       - user: gentoo-ev-org
         repo: https://github.com/gentoo-ev/www.gentoo-ev.org.git
@@ -284,7 +280,6 @@
     become_user: "{{ item }}"
     loop:
       - distrowatch-gentoo-ev-org
-      - gentoo-de
       - gentoo-ev-org
       - wwwtest-gentoo-ev-org
       - images-gentoo-ev-org
