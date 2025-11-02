@@ -289,3 +289,4 @@
     community.docker.docker_prune:
       containers: true
       images: true
+      volumes: true
