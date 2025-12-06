@@ -139,7 +139,7 @@
       name: "{{ item }}"
       state: >-
         {{
-          vars[item+'_cfg'].changed | default(false)
+          lookup('vars', item+'_cfg').changed | default(false)
           | ternary('reloaded', 'started')
         }}
       enabled: yes
