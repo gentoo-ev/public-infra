@@ -99,7 +99,6 @@
     loop:
       - distrowatch-gentoo-ev-org
       - gentoo-ev-org
-      - wwwtest-gentoo-ev-org
       - images-gentoo-ev-org
       - ssl-reverse-proxy
 
@@ -118,9 +117,6 @@
       - user: gentoo-ev-org
         repo: https://github.com/gentoo-ev/www.gentoo-ev.org.git
         version: HEAD
-      - user: wwwtest-gentoo-ev-org
-        repo: https://github.com/gentoo-ev/www.gentoo-ev.org.git
-        version: wwwtest
       - user: images-gentoo-ev-org
         repo: https://github.com/gentoo-ev/images.gentoo-ev.org.git
         version: HEAD
@@ -281,7 +277,6 @@
     loop:
       - distrowatch-gentoo-ev-org
       - gentoo-ev-org
-      - wwwtest-gentoo-ev-org
       - images-gentoo-ev-org
       - ssl-reverse-proxy
 
