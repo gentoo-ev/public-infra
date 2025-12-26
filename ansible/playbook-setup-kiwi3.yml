@@ -154,12 +154,6 @@
     become_user: ssl-reverse-proxy
     when: sites_cfg.changed
 
-  - name: Add redirect for lists.gentoo-ev.org to reverse proxy Caddyfile
-    blockinfile:
-      path: /home/ssl-reverse-proxy/git-clone/Caddyfile
-      block: "{{ lookup('file', 'files/kiwi3/ssl-reverse-proxy-redir.txt') }}"
-    register: redirect
-
   - name: "dnf-automatic: Activate 'apply_updates'"
     community.general.ini_file:
       path: /etc/dnf/automatic.conf
@@ -257,16 +251,8 @@
             | tee /dev/stderr \
             | { grep -oE 'sha256:[a-f0-9]{64}' || true ; } \
             | grep -v -q -F -f <(docker images --quiet --no-trunc | sort | tee /dev/stderr) || changed=false
-        docker_compose_up_args=(
-            # careful with --remove-orphans!
-            --detach
-            --wait
-        )
-        if [[ "{{ item == 'ssl-reverse-proxy' and redirect.changed }}" = True ]]; then
-            docker_compose_up_args+=( --force-recreate )
-            changed=true
-        fi
-        docker compose up "${docker_compose_up_args[@]}"
+        # careful with --remove-orphans!
+        docker compose up --detach --wait
         echo
         echo "changed=${changed}"
     args:

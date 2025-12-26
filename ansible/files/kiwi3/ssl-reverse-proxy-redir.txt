@@ -1,4 +1,0 @@
-lists.gentoo-ev.org {
-    import common
-    redir https://gentoo-ev.org/ressourcen/#mailingliste permanent
-}
