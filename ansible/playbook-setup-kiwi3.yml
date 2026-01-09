@@ -275,3 +275,5 @@
         until: 1440h
       images: true
       volumes: true
+      builder_cache: true
+      builder_cache_keep_storage: 8G
