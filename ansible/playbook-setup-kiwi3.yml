@@ -292,10 +292,6 @@
   - name: Prune Docker containers and images
     community.docker.docker_prune:
       containers: true
-      containers_filters:
-        # Keep containers for 60 days so we don't lose the logs
-        # Unfortunately, "until" uses creation time, not stop time
-        until: 1440h
       images: true
       volumes: true
       builder_cache: true
