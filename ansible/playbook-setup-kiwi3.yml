@@ -154,6 +154,28 @@
     become_user: ssl-reverse-proxy
     when: sites_cfg.changed
 
+  - name: Create directory for Docker logfiles
+    file:
+      state: directory
+      path: /var/log/docker
+
+  - name: Configure rsyslog and logrotate for Docker logfiles
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+      - src: files/kiwi3/rsyslog-docker.conf
+        dest: /etc/rsyslog.d/10-docker.conf
+      - src: files/kiwi3/logrotate-docker
+        dest: /etc/logrotate.d/docker
+    register: rsyslog_cfg
+
+  - name: Configure Docker for syslog logging
+    copy:
+      src: files/kiwi3/docker-daemon.json
+      dest: /etc/docker/daemon.json
+    register: docker_cfg
+
   - name: "dnf-automatic: Activate 'apply_updates'"
     community.general.ini_file:
       path: /etc/dnf/automatic.conf
@@ -225,6 +247,7 @@
       - firewalld
       - fail2ban
       - monit
+      - rsyslog
       - docker
 
   - name: Create internal Docker network "ssl-reverse-proxy"
