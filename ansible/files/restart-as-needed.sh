@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 # Copyright (c) 2020 Sebastian Pipping <sebastian@pipping.org>
-# Licensed under GPL v3 or later
+# Distributed under the terms of the MIT license
 
 set -e
 set -u
