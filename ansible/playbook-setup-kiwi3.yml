@@ -1,5 +1,5 @@
 # Copyright 2018-2023 Sebastian Pipping
-# Copyright 2023-2025 Ulrich Müller
+# Copyright 2023-2026 Ulrich Müller
 # Distributed under the terms of the MIT license
 
 - hosts: kiwi3.gentoo-ev.org
@@ -88,7 +88,7 @@
       dest: /etc/profile.d/usr-local-bin.sh
       owner: root
       group: root
-      mode: 0644
+      mode: '0644'
       content: "pathmunge /usr/local/bin"
 
   - name: Add Docker users
@@ -184,10 +184,10 @@
       value: 'yes'
 
   - name: "dnf-automatic: Allow custom systemd service config"
-    ansible.builtin.file:
+    file:
       path: /etc/systemd/system/dnf-automatic.service.d/
       state: directory
-      mode: 0755
+      mode: '0755'
 
   - name: "dnf-automatic: Add restart-as-needed.sh"
     copy:
@@ -195,7 +195,7 @@
       dest: /usr/local/bin/restart-as-needed.sh
       owner: root
       group: root
-      mode: 0744
+      mode: '0744'
 
   - name: "dnf-automatic: Activate restart-as-needed.sh"
     copy:
@@ -203,7 +203,7 @@
       dest: /etc/systemd/system/dnf-automatic.service.d/override.conf
       owner: root
       group: root
-      mode: 0644
+      mode: '0644'
 
   - name: Configure sshd
     blockinfile:
@@ -229,7 +229,7 @@
       dest: /etc/monitrc
       owner: root
       group: root
-      mode: 0600
+      mode: '0600'
     register: monit_cfg
 
   - name: Start services + enable auto-start
