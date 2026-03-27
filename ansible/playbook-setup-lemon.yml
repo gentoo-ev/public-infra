@@ -1,0 +1,298 @@
+# Copyright 2018-2023 Sebastian Pipping
+# Copyright 2023-2026 Ulrich Müller
+# Distributed under the terms of the MIT license
+
+- hosts: lemon.gentoo-ev.org
+  gather_facts: no
+
+  tasks:
+
+  - name: Read and decrypt URL for hc-ping
+    set_fact:
+      hc_ping_url: >-
+        {{
+          'https://hc-ping.com/' ~
+          lookup('pipe', 'gpg --batch -qd files/hc-ping-key.asc') | trim ~
+          '/fs-kiwi'
+        }}
+      cacheable: yes
+
+  - name: "Stop and mask service rpcbind (to no longer expose TCP port 0.0.0.0:111)"
+    systemd:
+      name: "{{ item }}"
+      enabled: no
+      masked: yes
+      state: stopped
+    loop:
+    - rpcbind.service
+    - rpcbind.socket
+
+  - name: Set timezone
+    community.general.timezone:
+      name: Europe/Berlin
+
+  - name: Set hostname
+    hostname:
+      name: "{{ inventory_hostname }}"
+
+  - name: Add yum repository "epel" (for htop and mg)
+    yum_repository:
+      name: epel
+      description: Extra Packages for Enterprise Linux $releasever - $basearch
+      metalink: https://mirrors.fedoraproject.org/metalink?repo=epel-$releasever&arch=$basearch&infra=$infra&content=$contentdir
+      enabled: yes
+      gpgcheck: yes
+      gpgkey: https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-$releasever
+
+  - name: Add yum repository "docker-ce-stable"
+    yum_repository:
+      name: docker-ce-stable
+      description: Docker CE Stable - $basearch
+      baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
+      enabled: yes
+      gpgcheck: yes
+      gpgkey: https://download.docker.com/linux/centos/gpg
+
+  - name: Install distro packages
+    package:
+      state: present
+      name:
+    # Maintenance
+      - dnf-automatic
+      - python3-tracer
+    # Debugging tools
+      - bash-completion
+      - htop
+      - lsof
+      - mg
+      - nano
+      - tmux
+      - wget
+    # Security
+      - fail2ban
+    # Monitoring
+      - monit
+    # Build and runtime dependencies
+      - docker-ce
+      - git
+      - python-pip
+      - python3
+
+  - name: Uninstall Python-based docker-compose 1.x
+    pip:
+      name: docker-compose
+      state: absent
+
+  - name: "Add /usr/local/bin to ${PATH}"
+    copy:
+      dest: /etc/profile.d/usr-local-bin.sh
+      owner: root
+      group: root
+      mode: '0644'
+      content: "pathmunge /usr/local/bin"
+
+  - name: Add Docker users
+    user:
+      name: "{{ item }}"
+      groups: docker
+      append: yes
+    loop:
+      - distrowatch-gentoo-ev-org
+      - gentoo-ev-org
+      - images-gentoo-ev-org
+      - ssl-reverse-proxy
+
+  - name: Clone/sync Git repositories
+    git:
+      repo: "{{ item.repo }}"
+      remote: origin-readonly
+      dest: "/home/{{ item.user }}/git-clone"
+      update: yes
+      version: "{{ item.version }}"
+    become_user: "{{ item.user }}"
+    loop:
+      - user: distrowatch-gentoo-ev-org
+        repo: https://github.com/gentoo-ev/distrowatch.gentoo-ev.org.git
+        version: HEAD
+      - user: gentoo-ev-org
+        repo: https://github.com/gentoo-ev/www.gentoo-ev.org.git
+        version: HEAD
+      - user: images-gentoo-ev-org
+        repo: https://github.com/gentoo-ev/images.gentoo-ev.org.git
+        version: HEAD
+      - user: ssl-reverse-proxy
+        repo: https://github.com/hartwork/docker-ssl-reverse-proxy.git
+        version: aa8b200daba928ca348418130f341d5dbeaa5d38
+
+  - name: Create certificate store for reverse proxy
+    file:
+      state: directory
+      path: /home/ssl-reverse-proxy/git-clone/caddy-home
+      owner: '65534'
+      group: '65534'
+      mode: '0704'
+
+  - name: Activate certificate store for reverse proxy
+    copy:
+      src: files/lemon/ssl-reverse-proxy-docker-compose-override.yml
+      dest: /home/ssl-reverse-proxy/git-clone/docker-compose.override.yml
+      owner: ssl-reverse-proxy
+      group: ssl-reverse-proxy
+
+  - name: Apply reverse proxy sites.cfg
+    copy:
+      src: files/lemon/ssl-reverse-proxy-sites.cfg
+      dest: /home/ssl-reverse-proxy/git-clone/sites.cfg
+      owner: ssl-reverse-proxy
+      group: ssl-reverse-proxy
+    register: sites_cfg
+
+  - name: Generate/sync reverse proxy Caddyfile
+    command: ./Caddyfile.generate
+    args:
+      chdir: /home/ssl-reverse-proxy/git-clone/
+    become_user: ssl-reverse-proxy
+    when: sites_cfg.changed
+
+  - name: Create directory for Docker logfiles
+    file:
+      state: directory
+      path: /var/log/docker
+
+  - name: Configure rsyslog and logrotate for Docker logfiles
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+      - src: files/lemon/rsyslog-docker.conf
+        dest: /etc/rsyslog.d/10-docker.conf
+      - src: files/lemon/logrotate-docker
+        dest: /etc/logrotate.d/docker
+    register: rsyslog_cfg
+
+  - name: Configure Docker for syslog logging
+    copy:
+      src: files/lemon/docker-daemon.json
+      dest: /etc/docker/daemon.json
+    register: docker_cfg
+
+  - name: "dnf-automatic: Activate 'apply_updates'"
+    community.general.ini_file:
+      path: /etc/dnf/automatic.conf
+      section: commands
+      option: apply_updates
+      value: 'yes'
+
+  - name: "dnf-automatic: Allow custom systemd service config"
+    file:
+      path: /etc/systemd/system/dnf-automatic.service.d/
+      state: directory
+      mode: '0755'
+
+  - name: "dnf-automatic: Add restart-as-needed.sh"
+    copy:
+      src: files/restart-as-needed.sh
+      dest: /usr/local/bin/restart-as-needed.sh
+      owner: root
+      group: root
+      mode: '0744'
+
+  - name: "dnf-automatic: Activate restart-as-needed.sh"
+    copy:
+      src: files/dnf-automatic-service-d-override.conf
+      dest: /etc/systemd/system/dnf-automatic.service.d/override.conf
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Configure sshd
+    blockinfile:
+      path: /etc/ssh/sshd_config
+      block: "{{ lookup('file', 'files/sshd-local.conf') }}"
+      insertbefore: BOF
+      append_newline: true
+
+  - name: Configure fail2ban
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+      - src: files/fail2ban-local.conf
+        dest: /etc/fail2ban/fail2ban.d/local.conf
+      - src: files/fail2ban-sshd.conf
+        dest: /etc/fail2ban/jail.d/sshd.conf
+    register: fail2ban_cfg
+
+  - name: Configure monit
+    template:
+      src: files/monitrc.j2
+      dest: /etc/monitrc
+      owner: root
+      group: root
+      mode: '0600'
+    register: monit_cfg
+
+  - name: Start services + enable auto-start
+    service:
+      name: "{{ item }}"
+      state: >-
+        {{
+          lookup('vars', item+'_cfg').changed | default(false)
+          | ternary('reloaded', 'started')
+        }}
+      enabled: yes
+    loop:
+      - dnf-automatic.timer
+      # firewalld needed for fail2ban
+      - firewalld
+      - fail2ban
+      - monit
+      - rsyslog
+      - docker
+
+  - name: Create internal Docker network "ssl-reverse-proxy"
+    shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
+    register: docker_network
+    changed_when: "docker_network.stdout == '[]\n'"
+
+  - name: Launch Docker containers (may take a while!)
+    shell:
+      chdir: "/home/{{ item }}/git-clone"
+      cmd: |
+        set -e -u -x -o pipefail
+        changed=true
+        docker compose pull
+        # For the upcoming block, the ideas are:
+        # - Check the SHA256s from the build output against all previously existing
+        #   images: if not all of them are matched, we have at least one new image.
+        # - Use the fact that "grep -v" returns 1 when it filtered all lines away.
+        # - Use the fact that "docker compose up" seems to pick up more recent images
+        #   by default (unless --no-recreate is used), see:
+        #   https://docs.docker.com/reference/cli/docker/compose/up/
+        docker compose build \
+            | { grep -F 'writing image' || true ; } \
+            | tee /dev/stderr \
+            | { grep -oE 'sha256:[a-f0-9]{64}' || true ; } \
+            | grep -v -q -F -f <(docker images --quiet --no-trunc | sort | tee /dev/stderr) || changed=false
+        # careful with --remove-orphans!
+        docker compose up --detach --wait
+        echo
+        echo "changed=${changed}"
+    args:
+      executable: /bin/bash
+    register: docker_compose_build
+    changed_when: "docker_compose_build.stdout.endswith('\nchanged=true')"
+    become_user: "{{ item }}"
+    loop:
+      - distrowatch-gentoo-ev-org
+      - gentoo-ev-org
+      - images-gentoo-ev-org
+      - ssl-reverse-proxy
+
+  - name: Prune Docker containers and images
+    community.docker.docker_prune:
+      containers: true
+      images: true
+      volumes: true
+      builder_cache: true
+      builder_cache_keep_storage: 8G
