@@ -250,6 +250,17 @@
       - rsyslog
       - docker
 
+  - name: Open http(s) in firewall public zone for IPv6
+    ansible.posix.firewalld:
+      zone: public
+      service: "{{ item }}"
+      state: enabled
+      immediate: true
+      permanent: true
+    loop:
+      - http
+      - https
+
   - name: Create internal Docker network "ssl-reverse-proxy"
     shell: docker network inspect ssl-reverse-proxy || docker network create --internal ssl-reverse-proxy
     register: docker_network
