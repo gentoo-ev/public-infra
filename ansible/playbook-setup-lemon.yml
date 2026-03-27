@@ -78,11 +78,6 @@
       - python-pip
       - python3
 
-  - name: Uninstall Python-based docker-compose 1.x
-    pip:
-      name: docker-compose
-      state: absent
-
   - name: "Add /usr/local/bin to ${PATH}"
     copy:
       dest: /etc/profile.d/usr-local-bin.sh
