@@ -13,7 +13,7 @@
         {{
           'https://hc-ping.com/' ~
           lookup('pipe', 'gpg --batch -qd files/hc-ping-key.asc') | trim ~
-          '/fs-quince'
+          '/fs-' ~ inventory_hostname_short
         }}
       cacheable: yes
 
