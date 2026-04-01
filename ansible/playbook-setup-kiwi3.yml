@@ -105,21 +105,21 @@
   - name: Clone/sync Git repositories
     git:
       repo: "{{ item.repo }}"
-      remote: github-readonly
+      remote: origin-readonly
       dest: "/home/{{ item.user }}/git-clone"
       update: yes
       version: "{{ item.version }}"
     become_user: "{{ item.user }}"
     loop:
       - user: distrowatch-gentoo-ev-org
-        repo: https://github.com/gentoo-ev/distrowatch.gentoo-ev.org.git
-        version: HEAD
+        repo: https://codeberg.org/gentoo-ev/distrowatch.gentoo-ev.org.git
+        version: master
       - user: gentoo-ev-org
-        repo: https://github.com/gentoo-ev/www.gentoo-ev.org.git
-        version: HEAD
+        repo: https://codeberg.org/gentoo-ev/www.gentoo-ev.org.git
+        version: master
       - user: images-gentoo-ev-org
-        repo: https://github.com/gentoo-ev/images.gentoo-ev.org.git
-        version: HEAD
+        repo: https://codeberg.org/gentoo-ev/images.gentoo-ev.org.git
+        version: master
       - user: ssl-reverse-proxy
         repo: https://github.com/hartwork/docker-ssl-reverse-proxy.git
         version: aa8b200daba928ca348418130f341d5dbeaa5d38
