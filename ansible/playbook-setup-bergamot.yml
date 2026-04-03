@@ -1,0 +1,151 @@
+# Copyright 2018-2023 Sebastian Pipping
+# Copyright 2023-2026 Ulrich Müller
+# Distributed under the terms of the MIT license
+
+- hosts: bergamot.gentoo-ev.org
+  gather_facts: no
+
+  tasks:
+
+  - name: Read and decrypt URL for hc-ping
+    set_fact:
+      hc_ping_url: >-
+        {{
+          'https://hc-ping.com/' ~
+          lookup('pipe', 'gpg --batch -qd files/hc-ping-key.asc') | trim ~
+          '/fs-' ~ inventory_hostname_short
+        }}
+      cacheable: yes
+
+  - name: "Stop and mask service rpcbind (to no longer expose TCP port 0.0.0.0:111)"
+    systemd:
+      name: "{{ item }}"
+      enabled: no
+      masked: yes
+      state: stopped
+    loop:
+    - rpcbind.service
+    - rpcbind.socket
+
+  - name: Set timezone
+    community.general.timezone:
+      name: Europe/Berlin
+
+  - name: Set hostname
+    hostname:
+      name: "{{ inventory_hostname }}"
+
+  - name: Add yum repository "epel" (for htop and mg)
+    yum_repository:
+      name: epel
+      description: Extra Packages for Enterprise Linux $releasever - $basearch
+      metalink: https://mirrors.fedoraproject.org/metalink?repo=epel-$releasever&arch=$basearch&infra=$infra&content=$contentdir
+      enabled: yes
+      gpgcheck: yes
+      gpgkey: https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-$releasever
+
+  - name: Install distro packages
+    package:
+      state: present
+      name:
+    # Maintenance
+      - dnf-automatic
+      - python3-tracer
+    # Debugging tools
+      - bash-completion
+      - htop
+      - lsof
+      - mg
+      - nano
+      - tmux
+      - wget
+    # Security
+      - fail2ban
+    # Monitoring
+      - monit
+
+  - name: Add users
+    user:
+      name: "{{ item }}"
+    loop:
+      - backup
+
+  - name: Create backup directory
+    file:
+      path: /home/backup/banana
+      state: directory
+      owner: backup
+      group: backup
+      mode: '0750'
+
+  - name: "dnf-automatic: Activate 'apply_updates'"
+    community.general.ini_file:
+      path: /etc/dnf/automatic.conf
+      section: commands
+      option: apply_updates
+      value: 'yes'
+
+  - name: "dnf-automatic: Allow custom systemd service config"
+    file:
+      path: /etc/systemd/system/dnf-automatic.service.d/
+      state: directory
+      mode: '0755'
+
+  - name: "dnf-automatic: Add restart-as-needed.sh"
+    copy:
+      src: files/restart-as-needed.sh
+      dest: /usr/local/bin/restart-as-needed.sh
+      owner: root
+      group: root
+      mode: '0744'
+
+  - name: "dnf-automatic: Activate restart-as-needed.sh"
+    copy:
+      src: files/dnf-automatic-service-d-override.conf
+      dest: /etc/systemd/system/dnf-automatic.service.d/override.conf
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Configure sshd
+    blockinfile:
+      path: /etc/ssh/sshd_config
+      block: "{{ lookup('file', 'files/sshd-local-centos10.conf') }}"
+      insertbefore: BOF
+      append_newline: true
+
+  - name: Configure fail2ban
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+      - src: files/fail2ban-local.conf
+        dest: /etc/fail2ban/fail2ban.d/local.conf
+      - src: files/fail2ban-sshd.conf
+        dest: /etc/fail2ban/jail.d/sshd.conf
+    register: fail2ban_cfg
+
+  - name: Configure monit
+    template:
+      src: files/monitrc.j2
+      dest: /etc/monitrc
+      owner: root
+      group: root
+      mode: '0600'
+    register: monit_cfg
+
+  - name: Start services + enable auto-start
+    service:
+      name: "{{ item }}"
+      state: >-
+        {{
+          lookup('vars', item+'_cfg').changed | default(false)
+          | ternary('reloaded', 'started')
+        }}
+      enabled: yes
+    loop:
+      - dnf-automatic.timer
+      # firewalld needed for fail2ban
+      - firewalld
+      - fail2ban
+      - monit
